@@ -13,7 +13,6 @@ st.title("🏠 Dashboard: Produtividade Consolidada")
 def carregar_dados():
     url_planilha = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR1nxMbp7kGhc7G4IqTSE_MIvam5aWEjGWtlTp81jaTefcRynbjJLI8ZaMalRFBcdPobO9Y1QDdC_b8/pub?output=csv"
     try:
-        # Lê os dados da planilha
         df = pd.read_csv(url_planilha, on_bad_lines='skip', dtype=str)
         df.columns = df.columns.str.strip()
         
@@ -21,9 +20,8 @@ def carregar_dados():
         df['Status_Clean'] = df['Status'].astype(str).str.strip().str.upper()
         df['Resp_Clean'] = df['Resp. Publicação'].fillna("Não Informado").astype(str).str.strip()
         
-        # Tratamento da Data de Publicação
+        # Tratamento da Data
         if 'DATA PUBLICAÇÃO NO CLIENTE' in df.columns:
-            # Converte para formato de data (DD/MM/AAAA)
             df['Data_Formatada'] = pd.to_datetime(df['DATA PUBLICAÇÃO NO CLIENTE'], errors='coerce', dayfirst=True)
             
         return df
@@ -37,7 +35,6 @@ if not df.empty:
     STATUS_PUB = "PUBLICADO NO CLIENTE"
     STATUS_IMP = "IMPORTADO"
 
-    # Filtro focado nos publicados
     df_pub = df[df['Status_Clean'] == STATUS_PUB].copy()
 
     # --- MÉTRICAS GERAIS ---
@@ -59,38 +56,54 @@ if not df.empty:
         st.plotly_chart(fig_pizza, use_container_width=True)
 
     with col_dir:
-        # Gráfico de barras: Ranking acumulado
         df_ranking = df_pub['Resp_Clean'].value_counts().reset_index()
         df_ranking.columns = ['Responsável', 'Qtd']
         fig_barras = px.bar(df_ranking, x='Responsável', y='Qtd', text='Qtd', color='Responsável', title="Total Acumulado por Responsável")
         st.plotly_chart(fig_barras, use_container_width=True)
 
-    # --- TABELA DE RESUMO CONSOLIDADO POR DIA E RESPONSÁVEL ---
+    # --- TABELA COM QUEBRA E TOTALIZADOR POR DIA ---
     st.divider()
     st.markdown("### 📋 Resumo Consolidado por Dia e Responsável")
     
     if not df_pub.empty and 'Data_Formatada' in df_pub.columns:
-        # Criamos a visão consolidada
-        # 1. Filtramos apenas quem tem data válida
-        df_consolidado = df_pub.dropna(subset=['Data_Formatada']).copy()
+        # 1. Filtra registros com data válida
+        df_base = df_pub.dropna(subset=['Data_Formatada']).copy()
         
-        # 2. Criamos a coluna de texto para a data (DD/MM/AAAA)
-        df_consolidado['Dia'] = df_consolidado['Data_Formatada'].dt.strftime('%d/%m/%Y')
+        # 2. Agrupa por Data Real e Responsável
+        df_agrupado = df_base.groupby([df_base['Data_Formatada'].dt.date, 'Resp_Clean']).size().reset_index(name='Quantidade Publicada')
+        df_agrupado = df_agrupado.rename(columns={'Data_Formatada': 'Data_Real'})
         
-        # 3. Agrupamos por Dia e Responsável para contar os registros
-        tabela_resumo = df_consolidado.groupby(['Dia', 'Resp_Clean']).size().reset_index(name='Quantidade Publicada')
+        # 3. Ordena (Dias mais recentes primeiro, e dentro do dia quem produziu mais)
+        df_agrupado = df_agrupado.sort_values(by=['Data_Real', 'Quantidade Publicada'], ascending=[False, False])
         
-        # 4. Ordenamos para mostrar as datas mais recentes primeiro
-        # Para ordenar corretamente, precisamos ordenar pela data real, não pelo texto formatado
-        df_consolidado_sort = df_consolidado.groupby([df_consolidado['Data_Formatada'].dt.date, 'Resp_Clean']).size().reset_index(name='Quantidade Publicada')
-        df_consolidado_sort = df_consolidado_sort.rename(columns={'Data_Formatada': 'Data'})
-        df_consolidado_sort = df_consolidado_sort.sort_values(by=['Data', 'Quantidade Publicada'], ascending=[False, False])
+        # 4. Injeta as linhas de "TOTAL DO DIA"
+        linhas_tabela = []
         
-        # Formatamos a data apenas para exibição final
-        df_consolidado_sort['Data'] = pd.to_datetime(df_consolidado_sort['Data']).dt.strftime('%d/%m/%Y')
-        df_consolidado_sort = df_consolidado_sort.rename(columns={'Resp_Clean': 'Responsável da Publicação'})
+        for data_real, grupo in df_agrupado.groupby('Data_Real', sort=False):
+            # Adiciona as pessoas daquele dia
+            linhas_tabela.append(grupo)
+            
+            # Adiciona a linha de Subtotal no final do dia
+            total_dia = grupo['Quantidade Publicada'].sum()
+            linha_total = pd.DataFrame({
+                'Data_Real': [data_real],
+                'Resp_Clean': ['↳ TOTAL DO DIA'], # Setinha para destacar
+                'Quantidade Publicada': [total_dia]
+            })
+            linhas_tabela.append(linha_total)
+            
+        # Junta todas as linhas na tabela final
+        df_final = pd.concat(linhas_tabela, ignore_index=True)
         
-        st.dataframe(df_consolidado_sort, use_container_width=True, hide_index=True)
+        # 5. Ajustes Visuais (Formata a data para DD/MM/AAAA)
+        df_final['Data'] = pd.to_datetime(df_final['Data_Real']).dt.strftime('%d/%m/%Y')
+        
+        # Renomeia e organiza as colunas para exibição
+        df_final = df_final[['Data', 'Resp_Clean', 'Quantidade Publicada']]
+        df_final = df_final.rename(columns={'Resp_Clean': 'Responsável da Publicação'})
+        
+        # Exibe a tabela
+        st.dataframe(df_final, use_container_width=True, hide_index=True)
     else:
         st.info("Aguardando preenchimento das datas na planilha para gerar o resumo diário.")
 
