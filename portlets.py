@@ -28,36 +28,78 @@ df = carregar_dados()
 
 if not df.empty:
     st.markdown("---")
-    
     # =====================================================================
-    # DEMANDA 1: Total da situação (STATUS) associado à coluna RESPONSAVEL
+    # DEMANDA: Quadro de Status Geral vs Acumulado por Responsável + Gráficos
     # =====================================================================
-    st.subheader("👤 Status por Responsável")
+    st.subheader("📊 Resumo de Status e Responsáveis")
     
     if 'STATUS' in df.columns and 'RESPONSAVEL' in df.columns:
-        # Conta a quantidade de cada status por responsável
-        df_status_resp = df.groupby(['RESPONSAVEL', 'STATUS']).size().reset_index(name='Total')
+        col_quadro1, col_quadro2 = st.columns(2)
         
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            # Gráfico de barras agrupadas
-            fig1 = px.bar(
-                df_status_resp, 
-                x='RESPONSAVEL', 
-                y='Total', 
-                color='STATUS', 
-                barmode='group',
-                text_auto=True,
-                title="Distribuição de Status por Responsável"
+        with col_quadro1:
+            st.markdown("### 📋 Status Total")
+            # Agrupa e conta o total geral de cada status
+            df_status_total = df.groupby('STATUS').size().reset_index(name='Total Geral')
+            st.dataframe(
+                df_status_total, 
+                use_container_width=True, 
+                hide_index=True
             )
-            st.plotly_chart(fig1, use_container_width=True)
-        with col2:
-            st.dataframe(df_status_resp, use_container_width=True, hide_index=True)
+            
+        with col_quadro2:
+            st.markdown("### 👥 Acumulado por Responsável")
+            # Cria uma tabela dinâmica (matriz) cruzando Responsável vs Status
+            df_pivot = df.pivot_table(
+                index='RESPONSAVEL', 
+                columns='STATUS', 
+                aggfunc='size', 
+                fill_value=0
+            )
+            # Adiciona uma coluna de subtotal por pessoa para facilitar a leitura
+            df_pivot['Total'] = df_pivot.sum(axis=1)
+            df_pivot = df_pivot.reset_index()
+            
+            st.dataframe(
+                df_pivot, 
+                use_container_width=True, 
+                hide_index=True
+            )
+            
+        # ==========================================
+        # GRÁFICOS: Pizza (Geral) e Barras (Por Responsável)
+        # ==========================================
+        st.markdown("### 📈 Visão Gráfica")
+        
+        col_graf1, col_graf2 = st.columns(2)
+        
+        with col_graf1:
+            # Novo: Gráfico de Pizza para o Status Geral
+            fig_pizza = px.pie(
+                df_status_total, 
+                names='STATUS', 
+                values='Total Geral', 
+                hole=0.4, # Deixa um buraco no meio (estilo rosca)
+                title="Distribuição do Status Geral"
+            )
+            st.plotly_chart(fig_pizza, use_container_width=True)
+            
+        with col_graf2:
+            # Mantém o gráfico de barras para o detalhamento por pessoa
+            df_grafico = df.groupby(['RESPONSAVEL', 'STATUS']).size().reset_index(name='Quantidade')
+            fig_composto = px.bar(
+                df_grafico,
+                x='RESPONSAVEL',
+                y='Quantidade',
+                color='STATUS',
+                text_auto=True,
+                barmode='stack',
+                title="Acumulado por Responsável"
+            )
+            st.plotly_chart(fig_composto, use_container_width=True)
+            
     else:
-        st.warning("Colunas 'STATUS' ou 'RESPONSAVEL' não foram encontradas. Verifique a grafia.")
-
-    st.markdown("---")
-    
+        st.warning("Colunas 'STATUS' ou 'RESPONSAVEL' não foram encontradas para gerar os quadros.")
+# ====
     # =====================================================================
     # DEMANDA 2: Total de TEM FILTRO DATA (SIM vs Outros Preenchidos)
     # =====================================================================
