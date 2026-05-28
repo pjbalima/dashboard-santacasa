@@ -167,4 +167,47 @@ if not df.empty:
     else:
         st.warning("Coluna 'LEVANTAMENTO NUM DOC' não encontrada.")
 
-   
+   # =====================================================================
+    # DEMANDA: Quantitativo por Responsável a partir da DATA FIM
+    # =====================================================================
+    st.markdown("---")
+    st.subheader("📅 Quantitativo por Dia")
+    
+    if 'DATA FIM' in df.columns and 'RESPONSAVEL' in df.columns:
+        # Filtra apenas as linhas onde a DATA FIM está preenchida
+        df_fim = df[df['DATA FIM'].notna()].copy()
+        
+        if not df_fim.empty:
+            # Agrupa os dados para o gráfico
+            df_fim_agrupado = df_fim.groupby(['DATA FIM', 'RESPONSAVEL']).size().reset_index(name='Total')
+            
+            # Cria uma tabela Pivot para a visualização na tela (Datas nas linhas, Responsáveis nas colunas)
+            df_fim_pivot = df_fim.pivot_table(
+                index='DATA FIM', 
+                columns='RESPONSAVEL', 
+                aggfunc='size', 
+                fill_value=0
+            ).reset_index()
+            
+            col_fim1, col_fim2 = st.columns([1, 1.5])
+            
+            with col_fim1:
+                st.markdown("### 📋 Entregas por Data")
+                st.dataframe(df_fim_pivot, use_container_width=True, hide_index=True)
+                
+            with col_fim2:
+                st.markdown("### 📊 Visão por Responsável")
+                # Gráfico de barras agrupadas por data
+                fig_fim = px.bar(
+                    df_fim_agrupado,
+                    x='DATA FIM',
+                    y='Total',
+                    color='RESPONSAVEL',
+                    barmode='group',
+                    text_auto=True
+                )
+                st.plotly_chart(fig_fim, use_container_width=True)
+        else:
+            st.info("Ainda não há registros com 'DATA FIM' preenchida na planilha.")
+    else:
+        st.warning("A coluna 'DATA FIM' não foi encontrada. Verifique o nome na planilha.")
