@@ -166,12 +166,11 @@ if not df.empty:
         st.plotly_chart(fig3, use_container_width=True)
     else:
         st.warning("Coluna 'LEVANTAMENTO NUM DOC' não encontrada.")
-
-   # =====================================================================
-    # DEMANDA: Quantitativo por Responsável a partir da DATA FIM
+# =====================================================================
+    # DEMANDA: Quantitativo por Responsável a partir da DATA FIM (Com Total Dia)
     # =====================================================================
     st.markdown("---")
-    st.subheader("📅 Quantitativo por Dia")
+    st.subheader("📅 Quantitativo por Data Fim")
     
     if 'DATA FIM' in df.columns and 'RESPONSAVEL' in df.columns:
         # Filtra apenas as linhas onde a DATA FIM está preenchida
@@ -181,18 +180,25 @@ if not df.empty:
             # Agrupa os dados para o gráfico
             df_fim_agrupado = df_fim.groupby(['DATA FIM', 'RESPONSAVEL']).size().reset_index(name='Total')
             
-            # Cria uma tabela Pivot para a visualização na tela (Datas nas linhas, Responsáveis nas colunas)
+            # Cria uma tabela Pivot (Datas nas linhas, Responsáveis nas colunas)
             df_fim_pivot = df_fim.pivot_table(
                 index='DATA FIM', 
                 columns='RESPONSAVEL', 
                 aggfunc='size', 
                 fill_value=0
-            ).reset_index()
+            )
+            
+            # ==========================================
+            # NOVO: Adiciona a coluna com o Total do Dia
+            # ==========================================
+            df_fim_pivot['Total do Dia'] = df_fim_pivot.sum(axis=1)
+            df_fim_pivot = df_fim_pivot.reset_index()
             
             col_fim1, col_fim2 = st.columns([1, 1.5])
             
             with col_fim1:
                 st.markdown("### 📋 Entregas por Data")
+                # A tabela agora exibirá os responsáveis e a nova coluna "Total do Dia"
                 st.dataframe(df_fim_pivot, use_container_width=True, hide_index=True)
                 
             with col_fim2:
@@ -211,3 +217,4 @@ if not df.empty:
             st.info("Ainda não há registros com 'DATA FIM' preenchida na planilha.")
     else:
         st.warning("A coluna 'DATA FIM' não foi encontrada. Verifique o nome na planilha.")
+   
