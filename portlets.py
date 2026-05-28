@@ -8,7 +8,7 @@ st.set_page_config(page_title="Dashboard de Controle", layout="wide")
 st.title("📊 Dashboard de Acompanhamento-PORTLET")
 
 # 2. Função para carregar os dados diretamente do Google Sheets
-@st.cache_data(ttl=600) # O cache evita ler a planilha o tempo todo (atualiza a cada 10 min)
+@st.cache_data(ttl=10) # O cache evita ler a planilha o tempo todo (atualiza a cada 10 min)
 def carregar_dados():
     # Extraímos o ID da sua planilha e usamos a URL de exportação para CSV
     sheet_id = "14jjxpnxQjTnzuXwNl7fpoMwbyxCeB7ZJS_25FbCaSNU"
