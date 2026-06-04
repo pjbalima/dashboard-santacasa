@@ -4,7 +4,7 @@ import plotly.express as px
 
 # 1. Configuração da página
 st.set_page_config(page_title="HSJ Indicadores", layout="wide")
-st.title("📊 Indicadores de Entrega")
+st.title("📊 HSJ-Indicadores de Entrega")
 
 # 2. Carregar os dados
 sheet_url = "https://docs.google.com/spreadsheets/d/1g_WofAvtoEyWQbOb2h-Kg93nRFSzr31g3ITu5O1gSjA/export?format=csv&gid=2067311371"
