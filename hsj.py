@@ -4,7 +4,7 @@ import plotly.express as px
 
 # 1. Configuração da página
 st.set_page_config(page_title="HSJ controle documentos", layout="wide")
-st.title("📊 HSJ controle doc")
+st.title("📊 HSJ controle documentos")
 st.markdown("Dashboard interativo para acompanhamento de status de documentos por responsável.")
 
 # 2. Carregar os dados
