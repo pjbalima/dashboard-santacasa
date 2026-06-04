@@ -18,6 +18,7 @@ def load_data():
     return df
 
 try:
+    @st.cache_data(ttl=10)
     df = load_data()
     
     # Verifica se as colunas requisitadas existem na planilha
