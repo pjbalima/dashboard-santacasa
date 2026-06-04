@@ -10,7 +10,7 @@ st.markdown("Dashboard interativo para acompanhamento de status de documentos po
 # 2. Carregar os dados
 sheet_url = "https://docs.google.com/spreadsheets/d/1g_WofAvtoEyWQbOb2h-Kg93nRFSzr31g3ITu5O1gSjA/export?format=csv&gid=2067311371"
 
-@st.cache_data
+@st.cache_data(ttl=10)
 def load_data():
     df = pd.read_csv(sheet_url)
     # Remove espaços em branco do nome das colunas para evitar erros de digitação
@@ -18,7 +18,6 @@ def load_data():
     return df
 
 try:
-    @st.cache_data(ttl=10)
     df = load_data()
     
     # Verifica se as colunas requisitadas existem na planilha
