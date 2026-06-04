@@ -34,20 +34,24 @@ try:
             df_filtrado = df[df['RESPONSAVEL'].isin(filtro_responsavel)]
         else:
             df_filtrado = df
-
-        # ==========================================
+# ==========================================
         # 1. LINHA SUPERIOR: CARDS DE MÉTRICAS
         # ==========================================
         col1, col2, col3 = st.columns(3)
         
         total_geral = len(df_filtrado)
+        
+        # Conta os Publicados
         qtd_publicados = df_filtrado[df_filtrado['STATUS'].str.contains('Publicado', case=False, na=False)].shape[0] if 'STATUS' in df_filtrado.columns else 0
-        qtd_importados = 0 
+        
+        # Conta os Migrados (Nova regra adicionada aqui)
+        qtd_migrados = df_filtrado[df_filtrado['STATUS'].str.contains('Migrado', case=False, na=False)].shape[0] if 'STATUS' in df_filtrado.columns else 0 
 
+        # Exibe os Cards na tela com os novos nomes
         col1.metric("Publicados no Cliente", qtd_publicados)
-        col2.metric("Total Importados", qtd_importados)
+        col2.metric("Total Migrados", qtd_migrados)
         col3.metric("Total Geral da Base", total_geral)
-
+    
         st.divider()
 
         # ==========================================
