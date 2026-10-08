@@ -30,11 +30,9 @@ with col1:
         df1_filter = df1[df1['STATUS'] == 'Publicado no Cliente'].copy()
         if not df1_filter.empty:
             df1_filter['DT PUBLICADO'] = pd.to_datetime(df1_filter['DT PUBLICADO'], dayfirst=True, errors='coerce')
-            df1_filter['DT_FORMATADA'] = df1_filter['DT PUBLICADO'].dt.strftime('%d/%m/%Y')
-            df1_grouped = df1_filter.groupby(['RESPONSAVEL', 'DT_FORMATADA', 'DT PUBLICADO']).size().reset_index(name='Total')
+            df1_filter['DT_FORMATADA'] = df1_filter['DT PUBLICADO'].dt.strftime('%d/%m/%Y').fillna('Sem data')
+            df1_grouped = df1_filter.groupby(['RESPONSAVEL', 'DT_FORMATADA']).size().reset_index(name='Total')
             pivot_df1 = df1_grouped.pivot_table(index='RESPONSAVEL', columns='DT_FORMATADA', values='Total', aggfunc='sum', fill_value=0, margins=True, margins_name='TOTAL GERAL')
-            cols_sorted = df1_grouped.sort_values('DT PUBLICADO', ascending=False)['DT_FORMATADA'].unique()
-            pivot_df1 = pivot_df1.reindex(columns=list(cols_sorted) + ['TOTAL GERAL'])
             st.write("Publicados por Responsável e Data:")
             st.dataframe(pivot_df1, use_container_width=True)
     except Exception as e:
@@ -49,20 +47,24 @@ with col2:
         fig2.update_traces(textinfo='percent+value')
         st.plotly_chart(fig2, use_container_width=True)
         
-        # Correção: Garantir que o bloco apareça mesmo se o filtro estiver vazio
-        df2_filter = df2[df2['STATUS'] == 'Publicado no Cliente'].copy()
+        # Filtro robusto: remove espaços em branco, padroniza para maiúsculo e garante que ache o "CONCLUIDO"
+        df2_filter = df2[df2['STATUS'].astype(str).str.strip().str.upper() == 'CONCLUIDO'].copy()
+        
+        st.write("Concluídos por Responsável e Data:")
         if not df2_filter.empty:
+            # Força a formatação de data
             df2_filter['DATA FIM'] = pd.to_datetime(df2_filter['DATA FIM'], dayfirst=True, errors='coerce')
-            df2_filter['DT_FORMATADA'] = df2_filter['DATA FIM'].dt.strftime('%d/%m/%Y')
-            df2_grouped = df2_filter.groupby(['RESPONSAVEL', 'DT_FORMATADA', 'DATA FIM']).size().reset_index(name='Total')
+            
+            # O fillna garante que dados sem data não desapareçam do groupby
+            df2_filter['DT_FORMATADA'] = df2_filter['DATA FIM'].dt.strftime('%d/%m/%Y').fillna('Sem data')
+            
+            df2_grouped = df2_filter.groupby(['RESPONSAVEL', 'DT_FORMATADA']).size().reset_index(name='Total')
             pivot_df2 = df2_grouped.pivot_table(index='RESPONSAVEL', columns='DT_FORMATADA', values='Total', aggfunc='sum', fill_value=0, margins=True, margins_name='TOTAL GERAL')
-            cols_sorted = df2_grouped.sort_values('DATA FIM', ascending=False)['DT_FORMATADA'].unique()
-            pivot_df2 = pivot_df2.reindex(columns=list(cols_sorted) + ['TOTAL GERAL'])
-            st.write("Publicados por Responsável e Data:")
+            
             st.dataframe(pivot_df2, use_container_width=True)
         else:
-            st.write("Publicados por Responsável e Data:")
-            st.info("Nenhum dado encontrado para este status.")
+            st.info("Nenhum dado concluído encontrado para gerar o detalhamento.")
+            
     except Exception as e:
         st.error(f"Erro na Planilha 2: {e}")
 
@@ -78,12 +80,13 @@ with col3:
         df3_filter = df3[df3['Status'] == 'Publicado no Cliente'].copy()
         if not df3_filter.empty:
             df3_filter['Data final'] = pd.to_datetime(df3_filter['Data final'], dayfirst=True, errors='coerce')
-            df3_filter['DT_FORMATADA'] = df3_filter['Data final'].dt.strftime('%d/%m/%Y')
-            df3_grouped = df3_filter.groupby(['Responsavel', 'DT_FORMATADA', 'Data final']).size().reset_index(name='Total')
+            df3_filter['DT_FORMATADA'] = df3_filter['Data final'].dt.strftime('%d/%m/%Y').fillna('Sem data')
+            df3_grouped = df3_filter.groupby(['Responsavel', 'DT_FORMATADA']).size().reset_index(name='Total')
             pivot_df3 = df3_grouped.pivot_table(index='Responsavel', columns='DT_FORMATADA', values='Total', aggfunc='sum', fill_value=0, margins=True, margins_name='TOTAL GERAL')
-            cols_sorted = df3_grouped.sort_values('Data final', ascending=False)['DT_FORMATADA'].unique()
-            pivot_df3 = pivot_df3.reindex(columns=list(cols_sorted) + ['TOTAL GERAL'])
             st.write("Publicados por Responsável e Data:")
             st.dataframe(pivot_df3, use_container_width=True)
+        else:
+            st.write("Publicados por Responsável e Data:")
+            st.info("Nenhum dado com status 'Publicado no Cliente' encontrado.")
     except Exception as e:
         st.error(f"Erro na Planilha 3: {e}")
