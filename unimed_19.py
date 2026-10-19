@@ -151,6 +151,26 @@ def identificar_linha(item_norm, sys_ok_norm, stat_norm):
   return "ITEM"
 
 
+def classificar_status_row(row):
+  stat_norm = normalizar(row.get("status", ""))
+  sys_norm = normalizar(row.get("Sistema OK?", ""))
+
+  # 1. Se a coluna 'status' OU 'Sistema OK?' começar por NAO SE APLICA
+  if stat_norm.startswith("NAO SE APLICA") or sys_norm.startswith("NAO SE APLICA"):
+    return "NÃO SE APLICA"
+
+  # 2. Se for VALIDADO
+  if stat_norm == "VALIDADO":
+    return "VALIDADO"
+
+  # 3. Se estiver em branco
+  if stat_norm in ["", "NAN", "NONE"]:
+    return "NÃO INICIADO"
+
+  # 4. Qualquer outro valor diferente de VALIDADO, em branco e iniciado por NAO SE APLICA
+  return "IMPEDIMENTO"
+
+
 def extrair_id(url):
   match = re.search(r"/d/([a-zA-Z0-9-_]+)", url)
   return match.group(1) if match else None
@@ -232,16 +252,8 @@ def carregar_dados_online(url_planilha):
             )
         ]
 
-        def classificar_status(val):
-          val_str = str(val).strip().upper()
-          if val_str in ["NAN", "NONE", ""]:
-            return "NÃO INICIADO"
-          elif val_str == "VALIDADO":
-            return "VALIDADO"
-          else:
-            return "IMPEDIMENTO"
-
-        df["Status Final"] = df["status"].apply(classificar_status)
+        # Classificação por linha considerando 'status' e 'Sistema OK?'
+        df["Status Final"] = df.apply(classificar_status_row, axis=1)
         df["Empresa"] = nome_empresa
 
         dfs.append(df[["Empresa", "Modulo", "Itens", "Status Final"]])
@@ -276,9 +288,10 @@ st.markdown(
 st.markdown("<br>", unsafe_allow_html=True)
 
 color_map = {
-    "VALIDADO": "#28a745",
-    "NÃO INICIADO": "#6c757d",
-    "IMPEDIMENTO": "#dc3545",
+    "VALIDADO": "#28a745",       # Verde
+    "NÃO INICIADO": "#6c757d",   # Cinza
+    "IMPEDIMENTO": "#dc3545",    # Vermelho
+    "NÃO SE APLICA": "#17a2b8",  # Azul
 }
 
 modulos_presentes = [
