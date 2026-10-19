@@ -17,8 +17,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<h3 style='text-align: center; color: #555; margin-top: 5px;'>UNIMED"
-    " NACIONAL/Migracao Oracle 19</h3>",
+    "<h3 style='text-align: center; color: #555; margin-top: 5px;'>PROJETO:"
+    " UNIMED NACIONAL/Migracao Oracle 19</h3>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
@@ -44,7 +44,7 @@ mapa_empresas = {
     "Empresa 21": "21 - LABORATORIO SAMAMBAIA SUL BRASILIA",
 }
 
-# 4. Lista oficial dos módulos solicitados
+# 4. Lista oficial atualizada dos 33 módulos solicitados
 MODULOS_OFICIAIS = [
     "URGÊNCIA E EMERGÊNCIA",
     "CENTRAL DE MARCAÇÕES",
@@ -55,10 +55,12 @@ MODULOS_OFICIAIS = [
     "Painel (todos)",
     "CLASSIFICAÇÃO DE RISCO",
     "PRONTUÁRIO ELETRÔNICO - PEP",
+    "Controle de Infecção Hospitalar",
     "MOVIMENTAÇÃO DE DOCUMENTOS",
     "AMAP - SAME",
     "PEDIDOS DE IMAGEM",
     "PEDIDOS DE LABORATÓRIO",
+    "BANCO DE SANGUE",
     "COMPRAS",
     "GIW",
     "EDITOR 2",
@@ -67,12 +69,15 @@ MODULOS_OFICIAIS = [
     "NUTRIÇÃO",
     "FINANCEIRO",
     "CAIXA",
+    "FINANCEIRO 2",
     "PATRIMÔNIO",
     "CME",
     "CONTABILIDADE",
     "CUSTOS",
     "FATURAMENTO DE CONVÊNIOS",
     "SGU - APOIO A TI",
+    "INTEGRAÇÕES",
+    "DEMAIS PRODUTOS MV",
     "CENTRO CIRUGICO",
 ]
 
@@ -97,12 +102,13 @@ ALIASES_MODULOS = {
     "TOTEM SENHA": "Totem Senha (todos)",
     "TOTEM SENHA (TODOS)": "Totem Senha (todos)",
     "TOTEM": "Totem Senha (todos)",
-    "PAINEL": "Painel (todos)",
     "PAINEL (TODOS)": "Painel (todos)",
     "CLASSIFICACAO DE RISCO": "CLASSIFICAÇÃO DE RISCO",
     "PRONTUARIO ELETRONICO - PEP": "PRONTUÁRIO ELETRÔNICO - PEP",
     "PRONTUARIO ELETRONICO": "PRONTUÁRIO ELETRÔNICO - PEP",
     "PEP": "PRONTUÁRIO ELETRÔNICO - PEP",
+    "CONTROLE DE INFECCAO HOSPITALAR": "Controle de Infecção Hospitalar",
+    "CCIH": "Controle de Infecção Hospitalar",
     "MOVIMENTACAO DE DOCUMENTOS": "MOVIMENTAÇÃO DE DOCUMENTOS",
     "AMAP - SAME": "AMAP - SAME",
     "AMAP": "AMAP - SAME",
@@ -111,6 +117,7 @@ ALIASES_MODULOS = {
     "IMAGEM": "PEDIDOS DE IMAGEM",
     "PEDIDOS DE LABORATORIO": "PEDIDOS DE LABORATÓRIO",
     "LABORATORIO": "PEDIDOS DE LABORATÓRIO",
+    "BANCO DE SANGUE": "BANCO DE SANGUE",
     "COMPRAS": "COMPRAS",
     "GIW": "GIW",
     "EDITOR 2": "EDITOR 2",
@@ -120,6 +127,7 @@ ALIASES_MODULOS = {
     "NUTRICAO": "NUTRIÇÃO",
     "FINANCEIRO": "FINANCEIRO",
     "CAIXA": "CAIXA",
+    "FINANCEIRO 2": "FINANCEIRO 2",
     "PATRIMONIO": "PATRIMÔNIO",
     "CME": "CME",
     "CONTABILIDADE": "CONTABILIDADE",
@@ -128,6 +136,9 @@ ALIASES_MODULOS = {
     "FATURAMENTO": "FATURAMENTO DE CONVÊNIOS",
     "SGU - APOIO A TI": "SGU - APOIO A TI",
     "SGU": "SGU - APOIO A TI",
+    "INTEGRACOES": "INTEGRAÇÕES",
+    "INTEGRACAO": "INTEGRAÇÕES",
+    "DEMAIS PRODUTOS MV": "DEMAIS PRODUTOS MV",
     "CENTRO CIRUGICO": "CENTRO CIRUGICO",
     "CENTRO CIRURGICO": "CENTRO CIRUGICO",
 }
@@ -140,14 +151,11 @@ def identificar_linha(item_norm, sys_ok_norm, stat_norm):
   if item_norm in ALIASES_MODULOS:
     return ALIASES_MODULOS[item_norm]
 
-  if not sys_ok_norm and not stat_norm:
-    for alias_key, mod_oficial in ALIASES_MODULOS.items():
-      if len(alias_key) >= 4 and (
-          alias_key in item_norm or item_norm in alias_key
-      ):
-        return mod_oficial
-    return "SUBTITULO"
+  if item_norm.startswith("PAINEL") and not sys_ok_norm and not stat_norm:
+    return "Painel (todos)"
 
+  # Qualquer outra linha que não seja um cabeçalho de módulo, é tratada como ITEM
+  # Isto resolve o bug de apagar itens não iniciados (em branco)!
   return "ITEM"
 
 
@@ -155,19 +163,15 @@ def classificar_status_row(row):
   stat_norm = normalizar(row.get("status", ""))
   sys_norm = normalizar(row.get("Sistema OK?", ""))
 
-  # 1. Se a coluna 'status' OU 'Sistema OK?' começar por NAO SE APLICA
   if stat_norm.startswith("NAO SE APLICA") or sys_norm.startswith("NAO SE APLICA"):
     return "NÃO SE APLICA"
 
-  # 2. Se for VALIDADO
   if stat_norm == "VALIDADO":
     return "VALIDADO"
 
-  # 3. Se estiver em branco
   if stat_norm in ["", "NAN", "NONE"]:
     return "NÃO INICIADO"
 
-  # 4. Qualquer outro valor diferente de VALIDADO, em branco e iniciado por NAO SE APLICA
   return "IMPEDIMENTO"
 
 
@@ -231,8 +235,6 @@ def carregar_dados_online(url_planilha):
 
           if tipo == "IGNORAR":
             continue
-          elif tipo == "SUBTITULO":
-            continue
           elif tipo in MODULOS_OFICIAIS:
             modulo_atual = tipo
             continue
@@ -252,7 +254,6 @@ def carregar_dados_online(url_planilha):
             )
         ]
 
-        # Classificação por linha considerando 'status' e 'Sistema OK?'
         df["Status Final"] = df.apply(classificar_status_row, axis=1)
         df["Empresa"] = nome_empresa
 
@@ -294,39 +295,45 @@ color_map = {
     "NÃO SE APLICA": "#17a2b8",  # Azul
 }
 
-modulos_presentes = [
-    m for m in MODULOS_OFICIAIS if m in df_filtrado["Modulo"].unique()
-]
-
 cols = st.columns(2)
 
-for idx, modulo in enumerate(modulos_presentes):
+for idx, modulo in enumerate(MODULOS_OFICIAIS):
   df_mod = df_filtrado[df_filtrado["Modulo"] == modulo]
 
   if df_mod.empty:
-    continue
-
-  contagem = df_mod["Status Final"].value_counts().reset_index()
-  contagem.columns = ["Status Final", "Quantidade"]
+    contagem = pd.DataFrame([{"Status Final": "NÃO INICIADO", "Quantidade": 1}])
+    total_itens = 0
+  else:
+    contagem = df_mod["Status Final"].value_counts().reset_index()
+    contagem.columns = ["Status Final", "Quantidade"]
+    total_itens = len(df_mod)
 
   fig = px.pie(
       contagem,
       values="Quantidade",
       names="Status Final",
-      title=f"<b>Módulo: {modulo}</b>",
+      title=f"<b>Módulo: {modulo}</b> (Total: {total_itens} itens)",
       color="Status Final",
       color_discrete_map=color_map,
       hole=0.4,
   )
 
-  fig.update_traces(
-      textposition="inside",
-      textinfo="percent+value",
-      hovertemplate=(
-          "<b>%{label}</b><br>Quantidade: %{value}<br>Percentual:"
-          " %{percent}<extra></extra>"
-      ),
-  )
+  if total_itens == 0:
+    fig.update_traces(
+        textposition="inside",
+        textinfo="none",
+        hovertemplate="<b>%{label}</b><extra></extra>",
+    )
+    fig.add_annotation(text="Não<br>Iniciado", x=0.5, y=0.5, font_size=16, showarrow=False)
+  else:
+    fig.update_traces(
+        textposition="inside",
+        textinfo="percent+value",
+        hovertemplate=(
+            "<b>%{label}</b><br>Quantidade: %{value}<br>Percentual:"
+            " %{percent}<extra></extra>"
+        ),
+    )
 
   fig.update_layout(
       margin=dict(t=50, b=20, l=20, r=20),
